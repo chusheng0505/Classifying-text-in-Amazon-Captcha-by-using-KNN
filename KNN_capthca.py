@@ -1,0 +1,214 @@
+# ## Prediction the text in capthca by using KNN model
+
+import cv2
+import numpy as np
+from PIL import Image
+import os
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from skimage import feature as ft
+from sklearn.neighbors import KNeighborsClassifier
+import pickle
+from urllib.request import urlretrieve
+import imutils
+
+
+def hProject(binary):
+    h, w = binary.shape
+    hprojection = np.zeros(binary.shape, dtype=np.uint8)
+    h_h = [0]*h
+    for j in range(h):
+        for i in range(w):
+            if binary[j,i] == 0:
+                h_h[j] += 1
+    for j in range(h):
+        for i in range(h_h[j]):
+            hprojection[j,i] = 255
+    return h_h
+
+def vProject(binary):
+    h, w = binary.shape
+    vprojection = np.zeros(binary.shape, dtype=np.uint8)
+    w_w = [0]*w
+    for i in range(w):
+        for j in range(h):
+            if binary[j, i ] == 0:
+                w_w[i] += 1
+    for i in range(w):
+        for j in range(w_w[i]):
+            vprojection[j,i] = 255
+    return w_w
+
+def Captcha(path_load,path_save):
+    ## loading the orignal captcha and save it as grayscale image
+    path_load,path_save = path_load,path_save
+    image = []
+    for i in range(len(os.listdir(path_load))):
+        x = cv2.imread(path2+os.listdir(path_load)[i],0)
+        image.append(x)
+    
+    ## Calculate the horizontal and vertical boxes position
+    Position = []
+    for i in range(len(image)):
+        img = image[i]
+        gray = cv2.GaussianBlur(img,(5,1),cv2.BORDER_CONSTANT )
+        kernel = np.ones((7,1),np.uint8)
+        x_erode = cv2.erode(img,kernel,iterations = 1)
+        ret, thresh = cv2.threshold(x_erode,25,150, cv2.THRESH_TOZERO) 
+        h,w = thresh.shape
+
+        h_h = hProject(thresh)
+        start = 0
+        h_start, h_end = [], []
+        position = []
+        
+        ## Get the Vertical Splitting
+        for i in range(len(h_h)):
+            if h_h[i] > 0 and start == 0:
+                h_start.append(i)
+                start = 1
+            if h_h[i] ==0 and start == 1:
+                h_end.append(i)
+                start = 0
+
+        for i in range(len(h_start)):
+            cropImg = thresh[h_start[i]:h_end[i], 0:w]
+            if i ==0:
+                pass
+            w_w = vProject(cropImg)
+            wstart , wend, w_start, w_end = 0, 0, 0, 0
+            for j in range(len(w_w)):
+                if w_w[j] > 0 and wstart == 0:
+                    w_start = j
+                    wstart = 1
+                    wend = 0
+                if w_w[j] ==0 and wstart == 1:
+                    w_end = j
+                    wstart = 0
+                    wend = 1
+
+                ## Saving the Boxes coordinate(Boxes locations)
+                if wend == 1:
+                    position.append([w_start, h_start[i], w_end, h_end[i]])
+                    wend = 0
+        Position.append(position)
+    
+    ## Splitting original captcha into several images（Ideally should be six images)
+    box = []
+    for i in range(len(Position)):
+        if(len(Position[i]) == 6):
+            test = Position[i]
+            box.append(test)
+        else:
+            test = []
+            for j in range(len(Position[i])):
+                ## it's impossible that the width of an image smaller than size of 7 units
+                if((Position[i][j][2] - Position[i][j][0])<=7): 
+                    z = np.delete(Position[i],j,axis=0)
+                else:
+                    z = Position[i][j]
+                    test.append(z)
+            box.append(test)
+        
+    ## Check the numbers os boxes and fill it up to 6 boxes if there are not
+    Box = []
+    for i in range(len(box)):
+        if (len(box[i]) >= 6):
+            Box.append(box[i])
+        elif(len(box[i]) < 6):
+            box_less = []
+            for j in range(len(box[i])):
+                if((box[i][j][2] - box[i][j][0]) <= 33):
+                    y = box[i][j]
+                    box_less.append(y)
+                else:
+                    k = 1 if ((box[i][j][2] - box[i][j][0])//33)<=1 else ((box[i][j][2] - box[i][j][0])//33+1)
+                    y = np.vstack([box[i][j],np.stack([[0]*4]*k)])
+                    box_less.append(y)
+            box_less = np.vstack(box_less)
+            Box.append(box_less)
+    
+    ## the case of numbers of boxes are smaller than six,and i will fill the zeros array and restructure the widths of each boxes   
+    for i in range(len(Box)):
+        if(len(Box[i]) < 6): 
+            Box[i] = np.vstack([Box[i],[0]*4])
+            Box[i][-1][0] = Box[i][-2][2] + 1
+            Box[i][-1][2] = Box[i][-1][0]+33 if((Box[i][-1][0]+33)<=200) else Box[i][-1][0]+24
+            Box[i][-1][-1] = Box[i][-2][-1]
+        else:
+            pass
+    
+    ## if there are zero width in boxes of images,restructure the widths of wach boxes
+    for i in range(len(Box)):
+        for j in range(1,len(Box[i])):
+            if(np.sum(Box[i][j]) == 0):
+                final_x,final_y = Box[i][j-1][2],Box[i][j-1][3]
+                Box[i][j-1][2] = Box[i][j-1][0] + int((final_x-Box[i][j-1][0])/2)
+                Box[i][j][0] = Box[i][j-1][2] + 1
+                Box[i][j][2] = final_x
+                Box[i][j][3] = final_y
+            else:
+                pass
+        
+    ## Split the images into 6 boxes or six units image and save them in as .png format
+    for i in range(len(image)):
+        if(len(Box[i]) == 6):
+            for j in range(len(Box[i])):
+                initial_x,initial_y,final_x,final_y = Box[i][j][0],Box[i][j][1],Box[i][j][2],Box[i][j][3]
+                y = image[i][initial_y:final_y,initial_x:final_x]
+                cv2.imwrite(path_save+'image_'+str(i)+'_'+str(j)+'.png',y)
+        else:
+            pass
+        
+
+def HOG(image_input):
+    img_blur = cv2.GaussianBlur(image_input,(5,5),1,1)
+    ret,thresh = cv2.threshold(img_blur,127,255,cv2.THRESH_BINARY|cv2.THRESH_OTSU)
+    edged = imutils.auto_canny(thresh)
+    cnts,_ = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
+    c = max(cnts, key=cv2.contourArea)
+
+    (x, y, w, h) = cv2.boundingRect(c)
+    words = image_input[y:y + h, x:x + w]
+    words = cv2.resize(words, (500,500))
+
+    H = ft.hog(words,orientations=9,pixels_per_cell=(10,10),cells_per_block=(2, 2), transform_sqrt=True, block_norm="L1")
+    return H
+
+def KNN_prediction(img):
+    knnpickle_file = 'the location that you save  KNN model'
+    model_pred = pickle.load(open(knnpickle_file, 'rb'))
+    image = img
+    HOG_image = HOG(image)
+    prediction_knn = model_pred.predict(HOG(image).reshape(1,-1))
+    word_dic = {0:'A',1:'B',2:'C',3:'E',4:'F',5:'G',6:'H',7:'J',8:'K',9:'L',10:'M',
+                11:'N',12:'P',13:'R',14:'T',15:'U',16:'X',17:'Y'}
+    captcha = word_dic[prediction_knn[0]]
+    return captcha
+
+## Prediction by using KNN
+def text_prediction(path_save):
+    path_save = path_save
+    Image = []
+    for i in range(int(len(os.listdir(path_save))/6)):
+        image = [cv2.imread(path_save+'image_'+str(i)+'_'+str(j)+'.png',0) for j in range(6)]
+        Image.append(image)
+
+    Result = []
+    for i in range(len(Image)):
+        result = []
+        for j in range(len(Image[i])):
+            result.append((KNN_prediction(Image[i][j])))
+        Result.append(''.join(result))
+    return Result[0]
+
+## testing the model
+path_captcha =  'the location that you save the original captcha image'
+path_split = 'the location that you save the spliting image result'
+Captcha(path_captcha,path_split)
+text_prediction(path_split)
+
+
+
+
