@@ -2,10 +2,10 @@ Target : By using KNN classifier to predict the text in amazon captcha during we
 Accuracy : 94 ~ 96%
 
 1.Ideas: <br> 
-  \hspace{10mm}(i) There are 6 words in each captcha which included A,B,C,E,F,G,H,J,K,L,M,N,P,R,T,U,X,Y (totally 18 alphabets only) <br>
-  \(ii) Width of each word is around 26 ~27 units and the largest width of word is 33 units(M) <br>
-  \(iii) All of them are in big capital letters <br>
-  \(iv) Try to split them into six independent images and using trained KNN model to classify(predict) those words <br>
+  (i) There are 6 words in each captcha which included A,B,C,E,F,G,H,J,K,L,M,N,P,R,T,U,X,Y (totally 18 alphabets only) <br>
+  (ii) Width of each word is around 26 ~27 units and the largest width of word is 33 units(M) <br>
+  (iii) All of them are in big capital letters <br>
+  (iv) Try to split them into six independent images and using trained KNN model to classify(predict) those words <br>
  
 2.Problems during spliting into six boxes: <br>
   (i) Some of images are unable to be splitted into six boxes (least than six) <br>
