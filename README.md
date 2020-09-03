@@ -3,7 +3,7 @@ Accuracy : 94 ~ 96%
 
 1.Ideas:
   (i) There are 6 words in each captcha which included A,B,C,E,F,G,H,J,K,L,M,N,P,R,T,U,X,Y (totally 18 alphabets only) <br>
-  (ii) Width of each word is around 26 ~27 units and the largest width of word is 33 units(M)
+  (ii) Width of each word is around 26 ~27 units and the largest width of word is 33 units(M) <br>
   (iii) All of them are in big capital letters
   (iv) Try to split them into six independent images and using trained KNN model to classify(predict) those words
  
