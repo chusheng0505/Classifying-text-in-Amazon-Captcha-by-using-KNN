@@ -1,4 +1,4 @@
-Target : By using KNN classifier to predict the text in amazon captcha during webscrapping
+Target : By using KNN classifier to predict the text in amazon captcha during webscrapping <br>
 Accuracy : 94 ~ 96%
 
 1.Ideas: <br> 
