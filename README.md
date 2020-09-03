@@ -1,5 +1,5 @@
 Target : By using KNN classifier to predict the text in amazon captcha during webscrapping
-
+Accuracy : 94 ~ 96%
 
 1.Ideas:
   (i) There are 6 words in each captcha which included A,B,C,E,F,G,H,J,K,L,M,N,P,R,T,U,X,Y (totally 18 alphabets only)
