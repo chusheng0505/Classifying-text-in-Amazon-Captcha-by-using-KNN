@@ -1,3 +1,4 @@
+![243114327_390895395902379_3261079203551238848_n](https://user-images.githubusercontent.com/55430748/135550327-1bcaa7b4-89b2-4254-82c3-4e44ad213b71.png)
 Target : By using KNN classifier to predict the text in amazon captcha during webscrapping <br>
 Accuracy : 94 ~ 96%
 
